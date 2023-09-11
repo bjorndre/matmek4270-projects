@@ -242,6 +242,7 @@ class VibFD4(VibFD2):
 
 class VibFD5(VibFD2):
     def ue(self):
+        #return sp.exp(sp.sin(t))
         return t**4
     
     def f(self):
@@ -254,15 +255,15 @@ class VibFD5(VibFD2):
         b = np.zeros(self.Nt+1)
         A = sparse.diags([1, -2, 1], [-1, 0, 1], (self.Nt+1, self.Nt+1), "lil")
 
-        b[0] = self.I
-        b[-1] = self.I
-        dt_t = np.array([t*self.dt for t in range(1, self.Nt-1)])
+        #dt_t = np.array([t*self.dt for t in range(1, self.Nt-1)])
         
         #b[1:-2] = self.f(np.array([t*self.dt for t in range(1, self.Nt-1)]))`
         fa = sp.lambdify(t, self.f(), "numpy")
 
-        b[1:-2] = fa(dt_t)
-        
+        b = fa(self.t)
+        b[0] = self.I
+        b[-1] = self.I
+
         A = A/(self.dt**2)
 
         A[0, :3] = 1, 0, 0
