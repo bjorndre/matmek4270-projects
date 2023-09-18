@@ -265,8 +265,8 @@ class VibFD5(VibFD2):
         fa = sp.lambdify(t, self.f())
 
         b = fa(self.t)
-        b[0] = self.I
-        b[-1] = self.I
+        b[0] = self.ue().subs(t, 0)
+        b[-1] = self.ue().subs(t, self.T)
 
         A = A/(self.dt**2)
 
