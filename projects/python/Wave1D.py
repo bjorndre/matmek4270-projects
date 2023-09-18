@@ -33,28 +33,38 @@ class Wave1D:
         self.un = np.zeros(N+1)
         self.unm1 = np.zeros(N+1)
 
-    def D2(self, bc):
+    def D2(self, bc, side=0):
         """Return second order differentiation matrix
 
         Paramters
         ---------
         bc : int
             Boundary condition
-
+        side : int, optional
+            Which side of the boundary the condition apply.
+            - 0 both
+            - 1 left
+            - 2 right
         Note
         ----
         The returned matrix is not divided by dx**2
         """
         D = sparse.diags([1, -2, 1], [-1, 0, 1], (self.N+1, self.N+1), 'lil')
         if bc == 1: # Neumann condition is baked into stencil
-            raise NotImplementedError
+            if side == 0:
+                D[0, :3] = -2, 2, 0
+                D[-1, -3:] = 0, 2, -2
+            elif side == 1:
+                D[0, :3] = -2, 2, 0
+            else:
+                D[-1, -3:] = 0, 2, -2
 
         elif bc == 3: # periodic (Note u[0] = u[-1])
-            raise NotImplementedError
+            D[0,-2] = 1
 
         return D
 
-    def apply_bcs(self, bc, u=None):
+    def apply_bcs(self, bc, u=None, side=0):
         """Apply boundary conditions to solution vector
 
         Parameters
@@ -65,24 +75,39 @@ class Wave1D:
             - 1 Neumann
             - 2 Open boundary
             - 3 periodic
+        side : int, optional
+            Which side of the boundary the condition apply.
+            - 0 both
+            - 1 left
+            - 2 right
         u : array, optional
             The solution array to fix at boundaries
             If not provided, use self.unp1
-
         """
         u = u if u is not None else self.unp1
         if bc == 0: # Dirichlet condition
-            u[0] = 0
-            u[-1] = 0
+            if side == 0:
+                u[0] = 0
+                u[-1] = 0
+            elif side == 1:
+                u[0] = 0
+            else:
+                u[-1] = 0
 
         elif bc == 1: # Neumann condition
             pass
 
         elif bc == 2: # Open boundary
-            raise NotImplementedError
+            if side == 0:
+                u[0] = 2*(1-self.cfl)*self.un[0] - (1-self.cfl)/(1+self.cfl)*self.unm1[0] + 2*self.cfl**2/(1+self.cfl)*self.un[1]
+                u[-1] = 2*(1-self.cfl)*self.un[-1] - (1-self.cfl)/(1+self.cfl)*self.unm1[-1] + 2*self.cfl**2/(1+self.cfl)*self.un[-2]
+            elif side == 1:
+                u[0] = 2*(1-self.cfl)*self.un[0] - (1-self.cfl)/(1+self.cfl)*self.unm1[0] + 2*self.cfl**2/(1+self.cfl)*self.un[1]
+            else:
+                u[-1] = 2*(1-self.cfl)*self.un[-1] - (1-self.cfl)/(1+self.cfl)*self.unm1[-1] + 2*self.cfl**2/(1+self.cfl)*self.un[-2]
 
-        elif bc == 3:
-            raise NotImplementedError
+        elif bc == 3: #Periodic
+            u[-1] = u[0]
 
         else:
             raise RuntimeError(f"Wrong bc = {bc}")
