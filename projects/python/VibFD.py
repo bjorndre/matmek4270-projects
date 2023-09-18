@@ -241,6 +241,10 @@ class VibFD4(VibFD2):
         return u
 
 class VibFD5(VibFD2):
+
+    def __init__(self, Nt, T, w=0.35, I=1):
+        VibSolver.__init__(self, Nt, T, w, I)
+    
     def ue(self):
         #return sp.exp(sp.sin(t))
         return t**4
@@ -258,7 +262,7 @@ class VibFD5(VibFD2):
         #dt_t = np.array([t*self.dt for t in range(1, self.Nt-1)])
         
         #b[1:-2] = self.f(np.array([t*self.dt for t in range(1, self.Nt-1)]))`
-        fa = sp.lambdify(t, self.f(), "numpy")
+        fa = sp.lambdify(t, self.f())
 
         b = fa(self.t)
         b[0] = self.I
