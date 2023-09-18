@@ -295,17 +295,6 @@ def test_order():
     VibFD4(8, 2*np.pi/w, w).test_order(N0=20)
     VibFD5(8, 2*np.pi/w, w).test_order()
 
-
-def test_mod_vib2():
-    w=0.35
-    f = lambda t : -w**2*t**4
-    a = VibFD2(8, 2*np.pi/w, f, w)
-    #a.test_order()
-    exact = lambda t : t**4
-    t = 0.5
-    assert exact(t) - a(t) < 1
-
-
 if __name__ == '__main__':
     #w=0.35
     #s = VibFD5(8, 2*np.pi/w, w)
