@@ -32,8 +32,8 @@ class Poisson2D:
 
     def laplace(self):
         """Return a vectorized Laplace operator"""
-        D2x = (1/self.px.dx)*self.px.D2()
-        D2y = (1/self.py.dx)*self.py.D2()
+        D2x = self.px.D2()
+        D2y = self.py.D2()
         return (sparse.kron(D2x, sparse.eye(self.Ny+1)) + sparse.kron(sparse.eye(self.Nx+1), D2y))
 
     def assemble(self, f, xij, yij):
@@ -65,6 +65,7 @@ class Poisson2D:
             The analytical solution
         """
         uj = sp.lambdify((x,y) , ue)(self.xij,self.yij)
+        print(self.px.dx, self.py.dx)
         return np.sqrt(self.px.dx*self.py.dx*np.sum((u-uj)**2))
 
     def __call__(self, Nx, Ny, f=implemented_function('f', lambda x, y: 2)(x, y)):
@@ -93,15 +94,17 @@ def test_poisson2d():
     f = ue.diff(x, 2) + ue.diff(y, 2)
 
     sol = Poisson2D(Lx, Ly)
-    u = sol(30, 30, f)
-    tol = 1/10
+    u = sol(100, 100, f)
+    tol = 1/1000
     assert sol.l2_error(u,ue) < tol
 
-ue = x*(1-x)*y*(1-y)*sp.exp(sp.cos(4*sp.pi*x)*sp.sin(2*sp.pi*y))
-Lx, Ly = 1, 1
-f = ue.diff(x, 2) + ue.diff(y, 2)
 
-sol = Poisson2D(Lx, Ly)
-u = sol(30, 30, f)
+if __name__ == '__main__':
+    ue = x*(1-x)*y*(1-y)*sp.exp(sp.cos(4*sp.pi*x)*sp.sin(2*sp.pi*y))
+    Lx, Ly = 1, 1
+    f = ue.diff(x, 2) + ue.diff(y, 2)
 
-print(sol.l2_error(u,ue))
+    sol = Poisson2D(Lx, Ly)
+    u = sol(100, 100, f)
+
+    print(sol.l2_error(u,ue))
