@@ -15,22 +15,44 @@ class Poisson2D:
     with homogeneous Dirichlet boundary conditions.
     """
 
-    def __init__(self, Lx, Ly, Nx, Ny):
+    def __init__(self, Lx, Ly, Nx=None, Ny=None):
         self.px = Poisson(Lx, Nx) # we can reuse some of the code from the 1D case
         self.py = Poisson(Ly, Ny)
 
-    def create_mesh(self):
+    def create_mesh(self, Nx, Ny):
         """Return a 2D Cartesian mesh
         """
-        raise NotImplementedError
+        
+        x = self.px.create_mesh(Nx)
+        y = self.py.create_mesh(Ny)
+        self.Nx = self.px.N
+        self.Ny = self.py.N
+        self.xij, self.yij = np.meshgrid(x,y, indexing="ij", sparse=True)
+        return self.xij, self.yij
 
     def laplace(self):
         """Return a vectorized Laplace operator"""
-        raise NotImplementedError
+        D2x = (1/self.px.dx)*self.px.D2()
+        D2y = (1/self.py.dx)*self.py.D2()
+        return (sparse.kron(D2x, sparse.eye(self.Ny+1)) + sparse.kron(sparse.eye(self.Nx+1), D2y))
 
-    def assemble(self, f=None):
+    def assemble(self, f, xij, yij):
         """Return assemble coefficient matrix A and right hand side vector b"""
-        raise NotImplementedError
+        B = np.ones((self.Nx+1, self.Ny+1), dtype=bool)
+        B[1:-1, 1:-1] = 0
+        bnds = np.where(B.ravel()==1)[0]
+        A = self.laplace()
+        
+        A = A.tolil()
+        for i in bnds:
+            A[i] = 0
+            A[i, i] = 1
+        A = A.tocsr()
+
+        F = sp.lambdify((x, y), f)(xij, yij)
+        b = F.ravel()
+        b[bnds] = 0
+        return A, b
 
     def l2_error(self, u, ue):
         """Return l2-error
@@ -42,9 +64,10 @@ class Poisson2D:
         ue : Sympy function
             The analytical solution
         """
-        raise NotImplementedError
+        uj = sp.lambdify((x,y) , ue)(self.xij,self.yij)
+        return np.sqrt(self.px.dx*self.py.dx*np.sum((u-uj)**2))
 
-    def __call__(self, f=implemented_function('f', lambda x, y: 2)(x, y)):
+    def __call__(self, Nx, Ny, f=implemented_function('f', lambda x, y: 2)(x, y)):
         """Solve Poisson's equation with a given righ hand side function
 
         Parameters
@@ -59,9 +82,26 @@ class Poisson2D:
         The solution as a Numpy array
 
         """
-        A, b = self.assemble(f=f)
-        return sparse.linalg.spsolve(A, b.ravel()).reshape((self.px.N+1, self.py.N+1))
+        xij, yij = self.create_mesh(Nx, Ny)
+        A, b = self.assemble(f, xij, yij)
+        U = sparse.linalg.spsolve(A, b.ravel()).reshape((self.px.N+1, self.py.N+1))
+        return U
 
 def test_poisson2d():
-    assert False
+    ue = x*(1-x)*y*(1-y)*sp.exp(sp.cos(4*sp.pi*x)*sp.sin(2*sp.pi*y))
+    Lx, Ly = 1, 1
+    f = ue.diff(x, 2) + ue.diff(y, 2)
 
+    sol = Poisson2D(Lx, Ly)
+    u = sol(30, 30, f)
+    tol = 1/10
+    assert sol.l2_error(u,ue) < tol
+
+ue = x*(1-x)*y*(1-y)*sp.exp(sp.cos(4*sp.pi*x)*sp.sin(2*sp.pi*y))
+Lx, Ly = 1, 1
+f = ue.diff(x, 2) + ue.diff(y, 2)
+
+sol = Poisson2D(Lx, Ly)
+u = sol(30, 30, f)
+
+print(sol.l2_error(u,ue))
